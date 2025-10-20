@@ -190,13 +190,13 @@ df_merged <- df_merged %>%
 # 4. Telegram Alerts
 # =========================================
 df_alert <- df_merged %>%
-  filter(is_canceled | dep_delay_min >= 60 | arr_delay_min >= 60)
+  filter(is_canceled | dep_delay_min >= 3 | arr_delay_min >= 3)
 
 if(nrow(df_alert) > 0){
   msg <- paste0(
     "🚨 Ausfälle/Verspätungen ≥ 60 min:\n",
     paste0(
-      df_alert$trip_cat, " ", df_alert$trip_n,
+      df_alert$trip_cat, " ", df_alert$dep_line,
       " – Abfahrt: ", round(df_alert$dep_delay_min,0), " min, ",
       "Ankunft: ", round(df_alert$arr_delay_min,0), " min",
       ifelse(df_alert$is_canceled, " ⚠️ entfällt", ""),
