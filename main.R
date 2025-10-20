@@ -9,6 +9,11 @@ library(tibble)
 library(lubridate)
 library(httr)
 
+
+if (file.exists("renv/activate.R")) {
+  source("renv/activate.R")
+}
+
 # -------------------
 # Parameter
 # -------------------
@@ -28,6 +33,10 @@ send_telegram <- function(message) {
   url <- paste0("https://api.telegram.org/bot", bot_token, "/sendMessage")
   POST(url, body = list(chat_id = chat_id, text = message), encode = "form")
 }
+
+
+
+renv::activate()
 
 # -------------------
 # Funktion: Stop-Knoten aus XML in tibble
@@ -197,7 +206,6 @@ if(nrow(df_alert) > 0){
   )
   send_telegram(msg)
 }
-
 
 
 
