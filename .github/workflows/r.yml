@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Repository auschecken
+      # 1. Code auschecken
       - uses: actions/checkout@v3
 
       # 2. R installieren
@@ -18,7 +18,7 @@ jobs:
         with:
           r-version: "4.3.1"
 
-      # 3. Systemabhängigkeiten (wichtig für httr)
+      # 3. Systemabhängigkeiten für httr installieren
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -27,8 +27,8 @@ jobs:
       # 4. R-Pakete installieren
       - name: Install R packages
         run: |
-          Rscript -e 'install.packages(c("httr","xml2","dplyr","purrr","tibble","lubridate"), repos="https://cloud.r-project.org")'
-          Rscript -e 'installed.packages()[,"Package"]'  # zur Kontrolle
+          Rscript -e 'install.packages(c("curl", "openssl", "httr", "xml2", "dplyr", "purrr", "tibble", "lubridate"), repos="https://cloud.r-project.org")'
+          Rscript -e 'cat("Installierte Pakete:\n"); print(installed.packages()[,"Package"])'
 
       # 5. Skript ausführen
       - name: Run DB alert script
