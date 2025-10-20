@@ -8,6 +8,8 @@ on:
 env:
   # Library-Pfad für renv synchronisieren
   R_LIBS_USER: ${{ github.workspace }}/renv/library
+  # Ensure renv itself and restore use the same library path
+  RENV_PATHS_LIBRARY: ${{ github.workspace }}/renv/library
 
 jobs:
   build:
@@ -28,39 +30,45 @@ jobs:
           r-version: '4.4.1'
           use-public-rspm: true
 
-      # 3️⃣ Cache R Library (renv)
-      - name: Cache R packages
+      # 3️⃣ Cache R packages and renv cache
+      - name: Cache renv library and cache
         uses: actions/cache@v4
         with:
           path: |
             ${{ env.R_LIBS_USER }}
             renv/library
+            renv/cache
           key: ${{ runner.os }}-r-${{ hashFiles('**/renv.lock') }}
           restore-keys: |
             ${{ runner.os }}-r-
 
-      # 4️⃣ Install renv if missing
-      - name: Install renv
-        run: |
-          Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos="https://packagemanager.posit.co/cran/latest")'
-
-      # 5️⃣ Restore packages from renv.lock
-      - name: Restore packages
-        run: |
-          Rscript -e 'renv::restore(prompt = FALSE)'
-
-      # 6️⃣ Install system dependencies (optional, z.B. for xml2, httr)
+      # 4️⃣ Install system dependencies on Ubuntu (needed by some packages)
       - name: Install system dependencies on Ubuntu
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libxml2-dev libcurl4-openssl-dev libssl-dev
 
-      # 7️⃣ Run main script
+      # 5️⃣ Install renv if missing
+      - name: Install renv
+        run: |
+          Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos="https://packagemanager.posit.co/cran/latest")'
+
+      # 6️⃣ Print .libPaths and R version (quick debug)
+      - name: Dump library paths and R version
+        run: |
+          Rscript -e 'cat("R version:\\n"); print(version); cat("\\n.libPaths():\\n"); print(.libPaths());'
+
+      # 7️⃣ Restore packages from renv.lock (with verbose output to help debugging)
+      - name: Restore packages
+        run: |
+          Rscript -e 'options(renv.verbose = TRUE); renv::restore(prompt = FALSE)'
+
+      # 8️⃣ Run main script
       - name: Run main.R
         run: Rscript main.R
 
-      # 8️⃣ Print session info (optional, zur Kontrolle)
+      # 9️⃣ Print session info (optional, zur Kontrolle)
       - name: Session info
         run: |
           Rscript -e 'if (requireNamespace("sessioninfo", quietly = TRUE)) { sessioninfo::session_info() } else { sessionInfo() }'
