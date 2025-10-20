@@ -2,6 +2,11 @@
 # R-Skript: DB Fahrplan + FCHG + Telegram Alert
 # =========================================
 
+if (file.exists("renv/activate.R")) {
+  source("renv/activate.R")
+}
+
+
 library(xml2)
 library(dplyr)
 library(purrr)
@@ -9,10 +14,6 @@ library(tibble)
 library(lubridate)
 library(httr)
 
-
-if (file.exists("renv/activate.R")) {
-  source("renv/activate.R")
-}
 
 # -------------------
 # Parameter
@@ -36,7 +37,6 @@ send_telegram <- function(message) {
 
 
 
-renv::activate()
 
 # -------------------
 # Funktion: Stop-Knoten aus XML in tibble
