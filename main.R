@@ -2,11 +2,6 @@
 # R-Skript: DB Fahrplan + FCHG + Telegram Alert
 # =========================================
 
-if (file.exists("renv/activate.R")) {
-  source("renv/activate.R")
-}
-
-
 library(xml2)
 library(dplyr)
 library(purrr)
