@@ -18,12 +18,21 @@ jobs:
         with:
           r-version: "4.3.1"
 
-      # 3. Pakete installieren
-      - run: |
-          R -e 'install.packages(c("httr","xml2","dplyr","purrr","tibble","lubridate"), repos="https://cloud.r-project.org")'
+      # 3. Systemabhängigkeiten (wichtig für httr)
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
-      # 4. Skript ausführen
-      - run: Rscript main.R
+      # 4. R-Pakete installieren
+      - name: Install R packages
+        run: |
+          Rscript -e 'install.packages(c("httr","xml2","dplyr","purrr","tibble","lubridate"), repos="https://cloud.r-project.org")'
+          Rscript -e 'installed.packages()[,"Package"]'  # zur Kontrolle
+
+      # 5. Skript ausführen
+      - name: Run DB alert script
+        run: Rscript main.R
         env:
           DB_API: ${{ secrets.DB_API }}
           Telegram_BOT: ${{ secrets.Telegram_BOT }}
