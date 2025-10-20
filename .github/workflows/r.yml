@@ -38,8 +38,12 @@ jobs:
             any::lubridate
             any::httr
 
-      # 5️⃣ main.R ausführen
+      # 5️⃣ main.R ausführen mit Secrets
       - name: Run main.R
+        env:
+          DB_API: ${{ secrets.DB_API }}
+          Telegram_BOT: ${{ secrets.Telegram_BOT }}
+          Telegram_CHAT: ${{ secrets.Telegram_CHAT }}
         run: Rscript main.R
 
       # 6️⃣ Session info ausgeben (optional)
