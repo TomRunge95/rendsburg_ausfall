@@ -27,4 +27,4 @@ jobs:
           echo "Telegram_CHAT=${{ secrets.Telegram_CHAT }}" >> $GITHUB_ENV
 
       - name: Run DB alert script
-        run: Rscript db_alert.R
+        run: Rscript main.R
