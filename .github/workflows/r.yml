@@ -1,47 +1,37 @@
-name: DB-Ausfälle Telegram
+name: DB Fahrplan Alerts
 
 on:
   schedule:
-    - cron: "*/15 8-22 * * *" # alle 15 Minuten von 8-22 Uhr
+    - cron: '*/15 * * * *'  # alle 15 Minuten
   workflow_dispatch:
 
-env:
-  # Speicherort für R-Pakete, wird für Cache genutzt
-  R_LIBS_USER: ${{ github.workspace }}/R/library
-
 jobs:
-  run-script:
+  run-r-script:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Code aus dem Repository auschecken
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      # 2. R installieren
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: "4.3.1"
+          r-version: "4.3"
 
-      # 3. Cache für R-Pakete (R_LIBS_USER) basierend auf renv.lock
-      - name: Cache R packages
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-packages-${{ hashFiles('renv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-r-packages-
-
-      # 4. Pakete via renv installieren/restore
-      - name: Restore R packages via renv
+      - name: Install system dependencies
         run: |
-          R -e 'install.packages("renv", repos="https://cloud.r-project.org"); renv::restore()'
+          sudo apt-get update
+          # libcurl headers (für R-Paket 'curl'), pkg-config für die Erkennung
+          # libxml2-dev für xml2, libssl-dev für OpenSSL-basierte Pakete
+          sudo apt-get install -y libcurl4-openssl-dev pkg-config libxml2-dev libssl-dev
 
-      # 5. Skript ausführen
-      - name: Run R script
+      - name: Install R packages
+        run: |
+          R -e 'install.packages(c("httr","xml2","dplyr","purrr","tibble","lubridate"), dependencies=TRUE, repos="https://cloud.r-project.org")'
+
+      - name: Set environment variables
+        run: |
+          echo "DB_API=${{ secrets.DB_API }}" >> $GITHUB_ENV
+          echo "Telegram_BOT=${{ secrets.Telegram_BOT }}" >> $GITHUB_ENV
+          echo "Telegram_CHAT=${{ secrets.Telegram_CHAT }}" >> $GITHUB_ENV
+
+      - name: Run DB alert script
         run: Rscript main.R
-        env:
-          DB_API: ${{ secrets.DB_API }}
-          Telegram_BOT: ${{ secrets.Telegram_BOT }}
-          Telegram_CHAT: ${{ secrets.Telegram_CHAT }}
