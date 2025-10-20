@@ -2,7 +2,7 @@ name: DB Fahrplan Alerts
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/15 * * * *'  # alle 15 Minuten
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
         with:
           r-version: "4.3"
 
-      - name: Install packages
+      - name: Install R packages
         run: |
           R -e 'install.packages(c("httr","xml2","dplyr","purrr","tibble","lubridate"))'
 
