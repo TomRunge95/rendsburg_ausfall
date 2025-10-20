@@ -19,18 +19,15 @@ jobs:
         working-directory: ${{ github.workspace }}
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up R
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: '4.4.1'
           use-public-rspm: true
 
-      # 3️⃣ Cache R packages and renv cache
       - name: Cache renv library and cache
         uses: actions/cache@v4
         with:
@@ -42,33 +39,49 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-r-
 
-      # 4️⃣ Install system dependencies on Ubuntu (needed by some packages)
       - name: Install system dependencies on Ubuntu
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libxml2-dev libcurl4-openssl-dev libssl-dev
 
-      # 5️⃣ Install renv if missing
       - name: Install renv
         run: |
           Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos="https://packagemanager.posit.co/cran/latest")'
 
-      # 6️⃣ Print .libPaths and R version (quick debug)
       - name: Dump library paths and R version
         run: |
           Rscript -e 'cat("R version:\\n"); print(version); cat("\\n.libPaths():\\n"); print(.libPaths());'
 
-      # 7️⃣ Restore packages from renv.lock (with verbose output to help debugging)
-      - name: Restore packages
+      # Debug: show whether renv.lock mentions xml2
+      - name: Show renv.lock summary (debug)
         run: |
-          Rscript -e 'options(renv.verbose = TRUE); renv::restore(prompt = FALSE)'
+          if [ -f renv.lock ]; then
+            echo "---- renv.lock head ----"
+            head -n 50 renv.lock || true
+            echo "---- grep xml2 in renv.lock ----"
+            grep -n '"xml2"' renv.lock || echo "xml2 not found in renv.lock"
+          else
+            echo "renv.lock not found"
+          fi
 
-      # 8️⃣ Run main script
+      - name: Restore packages (verbose)
+        run: |
+          Rscript -e 'options(renv.verbose = TRUE); renv::restore(prompt = FALSE, clean = TRUE)'
+      
+      # Debug: list installed packages in renv library after restore
+      - name: List renv library contents (debug)
+        run: |
+          Rscript -e 'cat("Installed in renv/library:\\n"); print(list.files("renv/library", recursive = TRUE)[1:200])'
+
+      # Fallback: ensure xml2 is installed (only if still missing)
+      - name: Ensure xml2 is installed (fallback)
+        run: |
+          Rscript -e 'if (!requireNamespace("xml2", quietly = TRUE)) install.packages("xml2", repos="https://packagemanager.posit.co/cran/latest")'
+
       - name: Run main.R
         run: Rscript main.R
 
-      # 9️⃣ Print session info (optional, zur Kontrolle)
       - name: Session info
         run: |
           Rscript -e 'if (requireNamespace("sessioninfo", quietly = TRUE)) { sessioninfo::session_info() } else { sessionInfo() }'
