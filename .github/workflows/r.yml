@@ -1,40 +1,46 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-#
-# See https://github.com/r-lib/actions/tree/master/examples#readme for
-# additional example workflows available for the R community.
-
-name: R
+name: DB-Ausfälle Telegram
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  schedule:
+    - cron: "*/15 8-22 * * *" # alle 15 Minuten von 8-22 Uhr
+  workflow_dispatch:
 
-permissions:
-  contents: read
+env:
+  # Speicherort für R-Pakete, wird für Cache genutzt
+  R_LIBS_USER: ${{ github.workspace }}/R/library
 
 jobs:
-  build:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        r-version: ['3.6.3', '4.1.1']
+  run-script:
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up R ${{ matrix.r-version }}
-        uses: r-lib/actions/setup-r@f57f1301a053485946083d7a45022b278929a78a
+      # Checkout des Codes
+      - uses: actions/checkout@v3
+
+      # R einrichten
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.r-version }}
-      - name: Install dependencies
+          r-version: "4.3.1"
+
+      # Cache für renv library, key basiert auf renv.lock
+      - name: Cache renv library
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-renv-
+
+      # Pakete via renv installieren/restore
+      - name: Restore R packages with renv
         run: |
-          install.packages(c("remotes", "rcmdcheck"))
-          remotes::install_deps(dependencies = TRUE)
-        shell: Rscript {0}
-      - name: Check
-        run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
-        shell: Rscript {0}
+          R -e 'install.packages("renv", repos="https://cloud.r-project.org"); renv::restore()'
+
+      # Skript ausführen
+      - name: Run R script
+        run: Rscript main.R
+        env:
+          DB_API: ${{ secrets.DB_API }}
+          Telegram_BOT: ${{ secrets.Telegram_BOT }}
+          Telegram_CHAT: ${{ secrets.Telegram_CHAT }}
