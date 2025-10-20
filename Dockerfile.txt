@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
 # 3. Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# 4. Kopiere alle Dateien aus dem aktuellen Ordner in den Container
+# 4. Kopiere Projektdateien
 COPY . /app
 
-# 5. R-Pakete installieren
-RUN R -e "install.packages(c('httr','xml2','dplyr','purrr','lubridate'))"
+# 5. renv installieren
+RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
 
-# 6. Befehl, der beim Start ausgeführt wird
-CMD ["Rscript", "main.R"]
+# 6. Pakete via renv installieren, falls renv.lock vorhanden ist
+RUN R -e "if (file.exists('renv.lock')) renv::restore() else install.packages(c('httr','xml2','dplyr
