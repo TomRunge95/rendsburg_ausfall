@@ -2,9 +2,11 @@
 # R-Skript: DB Fahrplan + FCHG + Telegram Alert
 # =========================================
 
-if (file.exists("renv/activate.R")) {
-  source("renv/activate.R")
+if (!requireNamespace("renv", quietly = TRUE)) {
+  install.packages("renv", repos = "https://packagemanager.posit.co/cran/latest")
 }
+
+renv::restore()
 
 
 library(xml2)
