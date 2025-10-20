@@ -1,0 +1,19 @@
+# 1. Basis-Image mit R
+FROM rocker/r-ver:4.3.1
+
+# 2. Systemabhängigkeiten installieren
+RUN apt-get update && apt-get install -y \
+    libxml2-dev libcurl4-openssl-dev libssl-dev libgit2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Arbeitsverzeichnis im Container
+WORKDIR /app
+
+# 4. Kopiere alle Dateien aus dem aktuellen Ordner in den Container
+COPY . /app
+
+# 5. R-Pakete installieren
+RUN R -e "install.packages(c('httr','xml2','dplyr','purrr','lubridate'))"
+
+# 6. Befehl, der beim Start ausgeführt wird
+CMD ["Rscript", "main.R"]
