@@ -1,35 +1,32 @@
-name: R-CI
+name: R-CI with renv and Cache
 
 on:
   push:
     branches: [ main ]
   pull_request:
 
+env:
+  # R library Pfad für renv synchronisieren
+  R_LIBS_USER: ${{ github.workspace }}/renv/library
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout Repository
+      # 1️⃣ Repository auschecken
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up R (vorkompilierte Binaries)
+      # 2️⃣ R Setup (RSPM Binaries für schnelle Installation)
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: '4.4.1'
           use-public-rspm: true
 
-      # 3️⃣ Optional: Cache system libraries (apt packages)
-      - name: Cache apt packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/apt-packages.txt') }}
-
-      # 4️⃣ Cache R packages (renv library)
-      - name: Cache R library
+      # 3️⃣ Optional: Cache der R Library (renv)
+      - name: Cache R packages
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
@@ -37,14 +34,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-r-
 
-      # 5️⃣ Install renv if not present
+      # 4️⃣ Installiere renv falls nötig
       - name: Install renv
-        run: Rscript -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/latest")'
+        run: Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos="https://packagemanager.posit.co/cran/latest")'
 
-      # 6️⃣ Restore packages from renv.lock
-      - name: Restore R packages
-        run: Rscript -e 'renv::restore()'
+      # 5️⃣ Restore Pakete aus renv.lock
+      - name: Restore packages
+        run: Rscript -e 'renv::restore(prompt = FALSE)'
 
-      # 7️⃣ Run main.R
+      # 6️⃣ Run main.R innerhalb des gleichen Library-Pfads
       - name: Run main script
         run: Rscript main.R
+
