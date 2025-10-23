@@ -1,4 +1,4 @@
-name: R CI minimal
+name: R CI minimal (ohne renv)
 
 on:
   push:
@@ -21,7 +21,12 @@ jobs:
           r-version: '4.4.1'
           use-public-rspm: true
 
-      # 3️⃣ Pakete installieren
+      # 3️⃣ Systemabhängigkeiten (Ubuntu) installieren
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -y && sudo apt-get install -y libxml2-dev libcurl4-openssl-dev libssl-dev
+
+      # 4️⃣ R-Pakete installieren
       - name: Install packages
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -33,6 +38,14 @@ jobs:
             any::lubridate
             any::httr
 
-      # 4️⃣ main.R ausführen
+      # 5️⃣ main.R ausführen mit Secrets
       - name: Run main.R
+        env:
+          DB_API: ${{ secrets.DB_API }}
+          Telegram_BOT: ${{ secrets.Telegram_BOT }}
+          Telegram_CHAT: ${{ secrets.Telegram_CHAT }}
         run: Rscript main.R
+
+      # 6️⃣ Session info ausgeben (optional)
+      - name: Session info
+        run: Rscript -e 'if (requireNamespace("sessioninfo", quietly = TRUE)) sessioninfo::session_info() else sessionInfo()'

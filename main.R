@@ -27,7 +27,7 @@ date <- format(Sys.Date(), "%y%m%d")
 hour <- format(Sys.time(), "%H")
 
 bot_token <- Sys.getenv("Telegram_BOT")
-chat_id   <- Sys.getenv("Telegram_CHAT")
+chat_id   <- 75538067
 
 # -------------------
 # Funktion: Telegram senden
