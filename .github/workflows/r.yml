@@ -1,40 +1,38 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-#
-# See https://github.com/r-lib/actions/tree/master/examples#readme for
-# additional example workflows available for the R community.
-
-name: R
+name: DB Fahrplan Alert
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+  schedule:
+    # Läuft jede Stunde zur Minute 5
+    - cron: "5 * * * *"
+  workflow_dispatch: # manueller Start möglich
 
 jobs:
-  build:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        r-version: ['3.6.3', '4.1.1']
+  run-alert:
+    runs-on: ubuntu-latest
+
+    env:
+      Telegram_BOT: ${{ secrets.TELEGRAM_BOT }}
+      Telegram_CHAT: ${{ secrets.TELEGRAM_CHAT }}
+      DB_API: ${{ secrets.DB_API }}
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up R ${{ matrix.r-version }}
-        uses: r-lib/actions/setup-r@f57f1301a053485946083d7a45022b278929a78a
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup R environment
+        uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.r-version }}
-      - name: Install dependencies
+          r-version: '4.4.1' # oder gewünschte Version
+
+      - name: Install system dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck"))
-          remotes::install_deps(dependencies = TRUE)
-        shell: Rscript {0}
-      - name: Check
-        run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
-        shell: Rscript {0}
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libssl-dev
+
+      - name: Install R package dependencies
+        run: |
+          Rscript -e 'install.packages(c("shiny", "dplyr", "lubridate", "httr", "xml2", "purrr", "stringr", "tibble"))'
+
+      - name: Run Shiny script
+        run: |
+          Rscript app.R
