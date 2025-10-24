@@ -1,0 +1,22 @@
+{
+  "name": "Rendsburg_Ausfall",
+  "title": "DB Fahrplan Alert",
+  "description": "Shiny-App, die Zugverspätungen abfragt und Meldungen an Telegram sendet.",
+  "platform": "shiny",
+  "runtime": "R-4.3",
+  "packages": [
+    "shiny",
+    "httr",
+    "xml2",
+    "dplyr",
+    "purrr",
+    "lubridate",
+    "stringr",
+    "tibble"
+  ],
+  "env": {
+    "DB_API": "",
+    "Telegram_BOT": ""
+  },
+  "startup": "app.R"
+}
