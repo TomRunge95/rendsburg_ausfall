@@ -186,6 +186,5 @@ parse_stop <- function(stop, include_trip = FALSE) {
     # -------------------
     
     Sys.sleep(5)
-    stopApp()
 
 ```
