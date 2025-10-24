@@ -18,5 +18,10 @@
     "DB_API": "",
     "Telegram_BOT": ""
   },
-  "startup": "app.R"
+  "startup": "app.R",
+  "scheduling": {
+    "enabled": true,
+    "frequency": "daily",
+    "time": "08:00"
+  }
 }
