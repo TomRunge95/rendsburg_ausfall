@@ -2,7 +2,6 @@
 title: "Test"
 output: html_document
 date: "2025-10-24"
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -59,16 +58,7 @@ parse_stop <- function(stop, include_trip = FALSE) {
 # -------------------
 # Shiny App
 # -------------------
-ui <- fluidPage(
-  titlePanel("DB Fahrplan Alert"),
-  mainPanel(
-    h4("Die App läuft automatisch, sendet Meldungen an Telegram und schließt sich danach.")
-  )
-)
 
-server <- function(input, output, session) {
-  
-  observe({
     # -------------------
     # MESZ-Zeit für alles
     # -------------------
@@ -197,10 +187,5 @@ server <- function(input, output, session) {
     
     Sys.sleep(5)
     stopApp()
-  })
-}
-
-shinyApp(ui, server)
-
 
 ```
