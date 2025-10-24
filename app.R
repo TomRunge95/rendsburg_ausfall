@@ -12,7 +12,7 @@ library(tibble)
 # -------------------
 send_telegram <- function(message) {
   bot_token <- Sys.getenv("Telegram_BOT")
-  chat_id   <- 75538067
+  chat_id   <- Sys.getenv("Telegram_CHAT")
   url <- paste0("https://api.telegram.org/bot", bot_token, "/sendMessage")
   POST(url, body = list(chat_id = chat_id, text = message), encode = "form")
 }
@@ -150,7 +150,7 @@ server <- function(input, output, session) {
       )
     
     df_alert <- df_merged %>%
-      filter(is_canceled | dep_delay_min >= 60 | arr_delay_min >= 60) %>%
+      filter(is_canceled | dep_delay_min >= 0 | arr_delay_min >= 0) %>%
       mutate(
         dep_time_fmt = format(dep_time, "%H:%M"),
         arr_time_fmt = format(arr_time, "%H:%M"),
@@ -184,7 +184,7 @@ server <- function(input, output, session) {
     # App automatisch schließen
     # -------------------
     
-    Sys.sleep(5)
+    Sys.sleep(2)
     stopApp()
   })
 }
