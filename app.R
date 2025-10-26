@@ -41,24 +41,40 @@ parse_stop <- function(stop, include_trip = FALSE) {
 }
 
 # ------------------------------------------
-# Hauptlogik (ehemals server -> observe)
+# Hauptlogik (Datum + Zeitprüfung angepasst)
 # ------------------------------------------
 now_berlin <- with_tz(Sys.time(), "Europe/Berlin")
 
 evaNo <- 8000312
 client_id <- "4d202863a4c79e8d7e069b9ef38b57f7"
 client_secret <- Sys.getenv("DB_API")
-date <- format(now_berlin, "%y%m%d")
+
+# Aktuelles Datum und Stunde
+current_date <- as.Date(now_berlin, tz = "Europe/Berlin")
 current_hour_int <- as.integer(format(now_berlin, "%H"))
-hours_vector <- (current_hour_int + 0:2) %% 24
-zeit <- sprintf("%02d", hours_vector)
+
+# Nächsten 3 Stunden inkl. Überlauf über Mitternacht
+hours_ahead <- 0:2
+times <- tibble(
+  hour = (current_hour_int + hours_ahead) %% 24,
+  date = current_date + if_else((current_hour_int + hours_ahead) >= 24, 1, 0)
+)
 
 plan_list <- list()
 
-for(hour in zeit){
-  url_plan <- paste0("https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/plan/", evaNo, "/", date, "/", hour)
+for(i in seq_len(nrow(times))) {
+  date_str <- format(times$date[i], "%y%m%d")
+  hour_str <- sprintf("%02d", times$hour[i])
+  
+  url_plan <- paste0("https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/plan/", evaNo, "/", date_str, "/", hour_str)
   res <- GET(url_plan, add_headers("DB-Client-Id" = client_id, "DB-Api-Key" = client_secret, "accept" = "application/xml"))
+  
+  if(status_code(res) == 404) {
+    message("⚠️ Keine Daten für ", date_str, " ", hour_str, " Uhr verfügbar.")
+    next
+  }
   if(status_code(res) != 200) stop("Fehler bei PLAN API: ", status_code(res))
+  
   xml_plan <- content(res, "raw") %>% read_xml()
   stops_plan <- xml_find_all(xml_plan, ".//s")
   plan <- map_df(stops_plan, parse_stop, include_trip = TRUE)
@@ -151,7 +167,10 @@ if(nrow(df_alert) > 0){
 } else {
   message("ℹ️ Keine Meldungen gefunden.")
 }
+<<<<<<< Updated upstream
 
 
 
 
+=======
+>>>>>>> Stashed changes
