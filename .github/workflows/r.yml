@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      Telegram_BOT: ${{ secrets.TELEGRAM_BOT }}
-      Telegram_CHAT: ${{ secrets.TELEGRAM_CHAT }}
+      TELEGRAM_BOT: ${{ secrets.TELEGRAM_BOT }}
+      TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT }}
       DB_API: ${{ secrets.DB_API }}
 
     steps:
@@ -35,6 +35,6 @@ jobs:
         run: |
           Rscript -e 'install.packages(c("shiny", "dplyr", "lubridate", "httr", "xml2", "purrr", "stringr", "tibble"))'
 
-      - name: Run Shiny script
+      - name: Run DB Fahrplan Alert
         run: |
           Rscript app.R
