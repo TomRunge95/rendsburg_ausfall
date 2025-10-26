@@ -122,7 +122,7 @@ df_merged <- merge(plan_simple, fchg_simple, by = "stop_id", all.x = TRUE, suffi
   )
 
 df_alert <- df_merged %>%
-  filter(is_canceled | dep_delay_min >= 0 | arr_delay_min >= 0) %>%
+  filter(is_canceled | dep_delay_min >= 60 | arr_delay_min >= 60) %>%
   mutate(
     dep_time_fmt = format(dep_time, "%H:%M"),
     arr_time_fmt = format(arr_time, "%H:%M"),
