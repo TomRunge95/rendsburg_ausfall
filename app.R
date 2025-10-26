@@ -13,7 +13,7 @@ library(tibble)
 # Telegram Funktion
 send_telegram <- function(message) {
   bot_token <- Sys.getenv("Telegram_BOT")
-  chat_id   <- 75538067
+  chat_id   <- Sys.getenv("TELEGRAM_CHAT")
   url <- paste0("https://api.telegram.org/bot", bot_token, "/sendMessage")
   POST(url, body = list(chat_id = chat_id, text = message), encode = "form")
 }
