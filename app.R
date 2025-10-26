@@ -167,10 +167,4 @@ if(nrow(df_alert) > 0){
 } else {
   message("ℹ️ Keine Meldungen gefunden.")
 }
-<<<<<<< Updated upstream
 
-
-
-
-=======
->>>>>>> Stashed changes
