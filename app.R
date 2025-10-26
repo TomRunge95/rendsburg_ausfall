@@ -13,7 +13,7 @@ library(tibble)
 # Telegram Funktion
 send_telegram <- function(message) {
   bot_token <- Sys.getenv("TELEGRAM_BOT")
-  chat_id   <- Sys.getenv("TELEGRAM_CHAT")
+  chat_id   <-  Sys.getenv("TELEGRAM_CHAT_ID")
   url <- paste0("https://api.telegram.org/bot", bot_token, "/sendMessage")
   POST(url, body = list(chat_id = chat_id, text = message), encode = "form")
 }
@@ -151,6 +151,7 @@ if(nrow(df_alert) > 0){
 } else {
   message("ℹ️ Keine Meldungen gefunden.")
 }
+
 
 
 
