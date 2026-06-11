@@ -2,10 +2,10 @@ name: DB Fahrplan Alert
 
 on:
   schedule:
-    # Läuft zur vollen und halben Stunde zwischen 08:00 und 21:30
-    - cron: "0,30 8-21 * * *"
-    # Letzte Ausführung um 22:00
-    - cron: "0 22 * * *"
+    - cron: "7,37 8-21 * * *"
+      timezone: "Europe/Berlin"
+    - cron: "7 22 * * *"
+      timezone: "Europe/Berlin"
   workflow_dispatch:
 
 jobs:
