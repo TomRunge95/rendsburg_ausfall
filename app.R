@@ -11,11 +11,113 @@ library(stringr)
 library(tibble)
 
 # Telegram Funktion
+split_telegram_message <- function(header, items, max_chars = 3900) {
+  chunks <- character()
+  current <- header
+
+  for(item in items) {
+    candidate <- paste0(current, item, "\n\n")
+    if(nchar(candidate, type = "chars") > max_chars && current != header) {
+      chunks <- c(chunks, str_trim(current))
+      current <- paste0(header, item, "\n\n")
+    } else {
+      current <- candidate
+    }
+  }
+
+  c(chunks, str_trim(current))
+}
+
+html_escape <- function(x) {
+  x <- coalesce(as.character(x), "")
+  x %>%
+    str_replace_all("&", "&amp;") %>%
+    str_replace_all("<", "&lt;") %>%
+    str_replace_all(">", "&gt;")
+}
+
+format_delay <- function(planned_time, changed_time, delay_min) {
+  if(is.na(changed_time) || is.na(delay_min)) {
+    return(paste0("Plan: ", format(planned_time, "%H:%M"), " Uhr"))
+  }
+
+  paste0(
+    "Plan: ", format(planned_time, "%H:%M"), " Uhr · ",
+    "Neu: <b>", format(changed_time, "%H:%M"), " Uhr</b> ",
+    "(+", round(delay_min), " Min)"
+  )
+}
+
+format_alert_item <- function(row) {
+  is_departure <- !is.na(row$dep_line) && row$dep_line != ""
+  line <- if(is_departure) row$dep_line else row$arr_line
+  planned_time <- if(is_departure) row$dep_time else row$arr_time
+  changed_time <- if(is_departure) row$dep_time_fchg else row$arr_time_fchg
+  delay_min <- if(is_departure) row$dep_delay_min else row$arr_delay_min
+  event_label <- if(is_departure) "Abfahrt" else "Ankunft"
+  status <- if(row$is_canceled) "❌ <b>Ausfall</b>" else "⚠️ <b>Verspätung</b>"
+
+  paste0(
+    status, " · <b>", html_escape(line), "</b> · ", event_label, "\n",
+    html_escape(row$von), " → ", html_escape(row$nach), "\n",
+    if(row$is_canceled) {
+      paste0("Plan: ", format(planned_time, "%H:%M"), " Uhr")
+    } else {
+      format_delay(planned_time, changed_time, delay_min)
+    }
+  )
+}
+
+alert_state_file <- function() {
+  Sys.getenv("ALERT_STATE_FILE", unset = ".cache/alert_state.rds")
+}
+
+read_alert_state <- function(path) {
+  if(!file.exists(path)) {
+    return(tibble(alert_key = character(), alert_signature = character()))
+  }
+
+  state <- tryCatch(
+    readRDS(path),
+    error = function(e) {
+      warning("Alert-State konnte nicht gelesen werden: ", conditionMessage(e))
+      tibble(alert_key = character(), alert_signature = character())
+    }
+  )
+  if(!all(c("alert_key", "alert_signature") %in% names(state))) {
+    return(tibble(alert_key = character(), alert_signature = character()))
+  }
+
+  state %>%
+    select(alert_key, alert_signature) %>%
+    distinct()
+}
+
+write_alert_state <- function(state, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(state, path)
+}
+
 send_telegram <- function(message) {
   bot_token <- Sys.getenv("TELEGRAM_BOT")
   chat_id   <-  Sys.getenv("TELEGRAM_CHAT_ID")
   url <- paste0("https://api.telegram.org/bot", bot_token, "/sendMessage")
-  POST(url, body = list(chat_id = chat_id, text = message), encode = "form")
+  res <- POST(
+    url,
+    body = list(
+      chat_id = chat_id,
+      text = message,
+      parse_mode = "HTML",
+      disable_web_page_preview = TRUE
+    ),
+    encode = "form"
+  )
+
+  if(status_code(res) >= 300) {
+    warning("Telegram API meldet Status ", status_code(res))
+  }
+
+  res
 }
 
 # XML Parser (wie gehabt)
@@ -65,20 +167,20 @@ plan_list <- list()
 for(i in seq_len(nrow(times))) {
   date_str <- format(times$date[i], "%y%m%d")
   hour_str <- sprintf("%02d", times$hour[i])
-  
+
   url_plan <- paste0("https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/plan/", evaNo, "/", date_str, "/", hour_str)
   res <- GET(url_plan, add_headers("DB-Client-Id" = client_id, "DB-Api-Key" = client_secret, "accept" = "application/xml"))
-  
+
   if(status_code(res) == 404) {
     message("⚠️ Keine Daten für ", date_str, " ", hour_str, " Uhr verfügbar.")
     next
   }
   if(status_code(res) != 200) stop("Fehler bei PLAN API: ", status_code(res))
-  
+
   xml_plan <- content(res, "raw") %>% read_xml()
   stops_plan <- xml_find_all(xml_plan, ".//s")
   plan <- map_df(stops_plan, parse_stop, include_trip = TRUE)
-  
+
   plan_simple <- plan %>%
     mutate(
       stop_id  = map_chr(stop_attr, ~ .x[["id"]] %||% NA_character_),
@@ -99,7 +201,7 @@ for(i in seq_len(nrow(times))) {
       nach = coalesce(str_extract(dep_ppth, "(?<=\\|)[^|]+$"), "Rendsburg")
     ) %>%
     select(stop_id, eva, trip_n, trip_cat, dep_line, arr_ppth, von, dep_ppth, nach, arr_line, arr_time, dep_time, messages)
-  
+
   plan_list[[length(plan_list)+1]] <- plan_simple
 }
 
@@ -140,31 +242,49 @@ df_merged <- merge(plan_simple, fchg_simple, by = "stop_id", all.x = TRUE, suffi
 df_alert <- df_merged %>%
   filter(is_canceled | dep_delay_min >= 15 | arr_delay_min >= 15) %>%
   mutate(
+    is_departure = !is.na(dep_line) & dep_line != "",
+    alert_key = paste(
+      stop_id,
+      if_else(is_departure, "dep", "arr"),
+      coalesce(dep_line, arr_line, trip_n, "unknown"),
+      sep = "|"
+    ),
+    alert_signature = paste(
+      if_else(is_canceled, "canceled", "delayed"),
+      if_else(is_departure, format(dep_time_fchg, "%Y-%m-%d %H:%M"), format(arr_time_fchg, "%Y-%m-%d %H:%M")),
+      sep = "|"
+    ),
     dep_time_fmt = format(dep_time, "%H:%M"),
     arr_time_fmt = format(arr_time, "%H:%M"),
     sort_time = coalesce(dep_time, arr_time)
   ) %>%
   arrange(sort_time)
 
-if(nrow(df_alert) > 0){
-  header <- paste0("🚨 Meldungen Stand: ", format(now_berlin, "%H:%M"), " Uhr\n\n")
-  body <- paste0(
-    ifelse(!is.na(df_alert$dep_line) & df_alert$dep_line != "",
-           paste0(df_alert$dep_line, " ", df_alert$von, " \u27A4 ", df_alert$nach, "\n",
-                  "Abfahrt: ", format(df_alert$dep_time, "%H:%M"), "\n",
-                  ifelse(df_alert$is_canceled, "❌ Zug fällt aus!", 
-                         paste0("Momentane Verspätung: ", df_alert$dep_delay_min, " Minuten"))
-           ),
-           paste0(df_alert$arr_line, " ", df_alert$von, " \u27A4 ", df_alert$nach, "\n",
-                  "Ankunft: ", format(df_alert$arr_time, "%H:%M"), "\n",
-                  ifelse(df_alert$is_canceled, "❌ Zug fällt aus!", 
-                         paste0("Momentane Verspätung: ", df_alert$arr_delay_min, " Minuten"))
-           )
-    ), collapse = "\n\n")
-  msg <- paste0(header, body)
-  send_telegram(msg)
+state_path <- alert_state_file()
+previous_alert_state <- read_alert_state(state_path)
+
+df_alert_new <- df_alert %>%
+  anti_join(previous_alert_state, by = c("alert_key", "alert_signature"))
+
+current_alert_state <- df_alert %>%
+  select(alert_key, alert_signature) %>%
+  distinct()
+
+write_alert_state(current_alert_state, state_path)
+
+if(nrow(df_alert_new) > 0){
+  header <- paste0("🚨 <b>DB Meldungen Rendsburg</b>\nStand: ", format(now_berlin, "%H:%M"), " Uhr\n\n")
+  alert_items <- vapply(
+    split(df_alert_new, seq_len(nrow(df_alert_new))),
+    format_alert_item,
+    character(1)
+  )
+  messages <- split_telegram_message(header, alert_items)
+
+  walk(messages, send_telegram)
   message("✅ Telegram-Nachricht gesendet.")
+} else if(nrow(df_alert) > 0) {
+  message("ℹ️ Nur bereits bekannte Meldungen gefunden. Keine Telegram-Nachricht gesendet.")
 } else {
   message("ℹ️ Keine Meldungen gefunden.")
 }
-

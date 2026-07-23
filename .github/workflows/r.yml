@@ -8,6 +8,10 @@ on:
       timezone: "Europe/Berlin"
   workflow_dispatch:
 
+concurrency:
+  group: db-fahrplan-alert
+  cancel-in-progress: false
+
 jobs:
   run-alert:
     runs-on: ubuntu-latest
@@ -16,10 +20,19 @@ jobs:
       TELEGRAM_BOT: ${{ secrets.TELEGRAM_BOT }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       DB_API: ${{ secrets.DB_API }}
+      ALERT_STATE_FILE: .cache/alert_state.rds
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore alert state
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: db-alert-state-${{ github.run_id }}
+          restore-keys: |
+            db-alert-state-
 
       - name: Enable r2u (binary CRAN packages)
         run: |
