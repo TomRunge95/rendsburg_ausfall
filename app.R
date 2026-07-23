@@ -240,9 +240,14 @@ df_merged <- merge(plan_simple, fchg_simple, by = "stop_id", all.x = TRUE, suffi
   )
 
 df_alert <- df_merged %>%
-  filter(is_canceled | dep_delay_min >= 15 | arr_delay_min >= 15) %>%
   mutate(
     is_departure = !is.na(dep_line) & dep_line != "",
+    alert_time = if_else(
+      is_departure,
+      coalesce(dep_time_fchg, dep_time),
+      coalesce(arr_time_fchg, arr_time)
+    ),
+    alert_delay_min = if_else(is_departure, dep_delay_min, arr_delay_min),
     alert_key = paste(
       stop_id,
       if_else(is_departure, "dep", "arr"),
@@ -256,8 +261,9 @@ df_alert <- df_merged %>%
     ),
     dep_time_fmt = format(dep_time, "%H:%M"),
     arr_time_fmt = format(arr_time, "%H:%M"),
-    sort_time = coalesce(dep_time, arr_time)
+    sort_time = alert_time
   ) %>%
+  filter((is_canceled | alert_delay_min >= 15) & alert_time >= now_berlin) %>%
   arrange(sort_time)
 
 state_path <- alert_state_file()

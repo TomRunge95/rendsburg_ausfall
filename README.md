@@ -13,6 +13,7 @@ Dieses R-Skript überwacht den Fahrplan der Deutschen Bahn für einen bestimmten
 - ✅ Berechnung von Verspätungen und Erkennung von Zugausfällen
 - ✅ Benachrichtigung per Telegram
 - ✅ Keine Wiederholung bereits gemeldeter unveränderter Meldungen
+- ✅ Meldet nur Züge, deren relevante Abfahrts- oder Ankunftszeit noch nicht vorbei ist
 
 ---
 
@@ -25,6 +26,8 @@ Eine Telegram-Nachricht wird nur gesendet, wenn eine Meldung neu ist oder sich r
 - eine Verspätung überschreitet erstmals die 15-Minuten-Grenze
 - die neue Abfahrts- oder Ankunftszeit ändert sich
 - aus einer Verspätung wird ein Ausfall
+
+Bereits abgefahrene oder angekommene Züge werden nicht mehr gemeldet. Bei Verspätungen zählt dafür die aktualisierte Echtzeit-Uhrzeit, falls die DB sie liefert.
 
 Für GitHub Actions wird `.cache` im Workflow per `actions/cache` wiederhergestellt und nach jedem Lauf neu gespeichert.
 
