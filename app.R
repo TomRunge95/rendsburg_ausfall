@@ -179,6 +179,11 @@ for(i in seq_len(nrow(times))) {
 
   xml_plan <- content(res, "raw") %>% read_xml()
   stops_plan <- xml_find_all(xml_plan, ".//s")
+  if(length(stops_plan) == 0) {
+    message("Keine Halte für ", date_str, " ", hour_str, " Uhr gefunden.")
+    next
+  }
+
   plan <- map_df(stops_plan, parse_stop, include_trip = TRUE)
 
   plan_simple <- plan %>%
@@ -206,29 +211,48 @@ for(i in seq_len(nrow(times))) {
 }
 
 plan_simple <- bind_rows(plan_list)
+if(nrow(plan_simple) == 0) {
+  message("Keine Fahrplandaten im betrachteten Zeitraum gefunden. Lauf wird ohne Fehler beendet.")
+  quit(save = "no", status = 0)
+}
 
 url_fchg <- paste0("https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/fchg/", evaNo, "?schema=timetable")
 res <- GET(url_fchg, add_headers("DB-Client-Id" = client_id, "DB-Api-Key" = client_secret, "accept" = "application/xml"))
 if(status_code(res) != 200) stop("Fehler bei FCHG API: ", status_code(res))
 xml_fchg <- content(res, "raw") %>% read_xml()
 stops_fchg <- xml_find_all(xml_fchg, ".//s")
-fchg <- map_df(stops_fchg, parse_stop)
-
-fchg_simple <- fchg %>%
-  mutate(
-    stop_id       = map_chr(stop_attr, ~ .x[["id"]] %||% NA_character_),
-    eva           = map_chr(stop_attr, ~ .x[["eva"]] %||% NA_character_),
-    dep_ct        = map_chr(dp_attr, ~ .x[["ct"]]  %||% NA_character_),
-    dep_clt       = map_chr(dp_attr, ~ .x[["clt"]] %||% NA_character_),
-    dep_line_fchg = map_chr(dp_attr, ~ .x[["l"]]  %||% NA_character_),
-    arr_ct        = map_chr(ar_attr, ~ .x[["ct"]]  %||% NA_character_),
-    arr_clt       = map_chr(ar_attr, ~ .x[["clt"]] %||% NA_character_),
-    arr_line_fchg = map_chr(ar_attr, ~ .x[["l"]]  %||% NA_character_)
-  ) %>%
-  mutate(
-    dep_time_fchg = ymd_hm(dep_ct, tz = "Europe/Berlin"),
-    arr_time_fchg = ymd_hm(arr_ct, tz = "Europe/Berlin")
+if(length(stops_fchg) == 0) {
+  fchg_simple <- tibble(
+    stop_id = character(),
+    eva = character(),
+    dep_ct = character(),
+    dep_clt = character(),
+    dep_line_fchg = character(),
+    arr_ct = character(),
+    arr_clt = character(),
+    arr_line_fchg = character(),
+    dep_time_fchg = as.POSIXct(character(), tz = "Europe/Berlin"),
+    arr_time_fchg = as.POSIXct(character(), tz = "Europe/Berlin")
   )
+} else {
+  fchg <- map_df(stops_fchg, parse_stop)
+
+  fchg_simple <- fchg %>%
+    mutate(
+      stop_id       = map_chr(stop_attr, ~ .x[["id"]] %||% NA_character_),
+      eva           = map_chr(stop_attr, ~ .x[["eva"]] %||% NA_character_),
+      dep_ct        = map_chr(dp_attr, ~ .x[["ct"]]  %||% NA_character_),
+      dep_clt       = map_chr(dp_attr, ~ .x[["clt"]] %||% NA_character_),
+      dep_line_fchg = map_chr(dp_attr, ~ .x[["l"]]  %||% NA_character_),
+      arr_ct        = map_chr(ar_attr, ~ .x[["ct"]]  %||% NA_character_),
+      arr_clt       = map_chr(ar_attr, ~ .x[["clt"]] %||% NA_character_),
+      arr_line_fchg = map_chr(ar_attr, ~ .x[["l"]]  %||% NA_character_)
+    ) %>%
+    mutate(
+      dep_time_fchg = ymd_hm(dep_ct, tz = "Europe/Berlin"),
+      arr_time_fchg = ymd_hm(arr_ct, tz = "Europe/Berlin")
+    )
+}
 
 df_merged <- merge(plan_simple, fchg_simple, by = "stop_id", all.x = TRUE, suffixes = c("", "_fchg")) %>%
   mutate(
